@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+  redis:
+    image: redis:7-alpine
+    container_name: blog-genius-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: blog-genius-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+
+  # Microservices
+  user-service:
+    build:
+      context: ./services/user
+      dockerfile: Dockerfile
+    container_name: blog-genius-user-service
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./services/user/.env
+    restart: always
+
+  author-service:
+    build:
+      context: ./services/author
+      dockerfile: Dockerfile
+    container_name: blog-genius-author-service
+    ports:
+      - "5002:5002"
+    env_file:
+      - ./services/author/.env
+    depends_on:
+      - rabbitmq
+    restart: always
+
+  blog-service:
+    build:
+      context: ./services/blog
+      dockerfile: Dockerfile
+    container_name: blog-genius-blog-service
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./services/blog/.env
+    depends_on:
+      - redis
+      - rabbitmq
+    restart: always
+
+  # Frontend Next.js Client
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: blog-genius-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - user-service
+      - author-service
+      - blog-service
+    restart: always
